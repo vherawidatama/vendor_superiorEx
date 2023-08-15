@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2022 The superiorOS Project
+# Copyright (C) 2018-2023 The LineageOS Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,8 +25,6 @@
 #                                          defaults to arm-linux-androidkernel- for arm
 #                                                      aarch64-linux-android- for arm64
 #                                                      x86_64-linux-android- for x86
-#   TARGET_KERNEL_CROSS_COMPILE_PREFIX_ARM32 = Compiler prefix for building vDSO32
-#   						defaults to arm-linux-androidkernel-
 #
 #   TARGET_KERNEL_CLANG_COMPILE        = Compile kernel with clang, defaults to true
 #   TARGET_KERNEL_CLANG_VERSION        = Clang prebuilts version, optional, defaults to clang-stable
@@ -76,8 +74,10 @@ KERNEL_PATCHLEVEL := $(shell grep -s "^PATCHLEVEL = " $(TARGET_KERNEL_SOURCE)/Ma
 TARGET_KERNEL_VERSION ?= $(shell echo $(KERNEL_VERSION)"."$(KERNEL_PATCHLEVEL))
 
 # 5.10+ can fully compile without GCC by default
-ifneq (,$(filter 5.10, $(TARGET_KERNEL_VERSION)))
-    TARGET_KERNEL_NO_GCC ?= true
+ifeq ($(shell expr $(KERNEL_VERSION) \>= 5), 1)
+    ifeq ($(shell expr $(KERNEL_PATCHLEVEL) \>= 10), 1)
+        TARGET_KERNEL_NO_GCC ?= true
+    endif
 endif
 
 ifeq ($(TARGET_KERNEL_NO_GCC), true)
@@ -102,11 +102,11 @@ endif
 # Clear this first to prevent accidental poisoning from env
 KERNEL_MAKE_FLAGS :=
 
-# Add back threads, ninja cuts this to $(nproc)/2
-KERNEL_MAKE_FLAGS += -j$(shell prebuilts/tools-superior/$(HOST_PREBUILT_TAG)/bin/nproc --all)
+# Add back threads, ninja cuts this to $(getconf _NPROCESSORS_ONLN)/2
+KERNEL_MAKE_FLAGS += -j$(shell getconf _NPROCESSORS_ONLN)
 
 TOOLS_PATH_OVERRIDE := \
-    PERL5LIB=$(BUILD_TOP)/prebuilts/tools-superior/common/perl-base
+    PERL5LIB=$(BUILD_TOP)/prebuilts/tools-lineage/common/perl-base
 
 ifneq ($(KERNEL_NO_GCC), true)
     GCC_PREBUILTS := $(BUILD_TOP)/prebuilts/gcc/$(HOST_PREBUILT_TAG)
@@ -166,9 +166,9 @@ ifneq ($(KERNEL_NO_GCC), true)
 
     ifeq ($(KERNEL_ARCH),arm64)
         # Add 32-bit GCC to PATH so that arm-linux-androidkernel-as is available for CONFIG_COMPAT_VDSO
-        TOOLS_PATH_OVERRIDE += PATH=$(BUILD_TOP)/prebuilts/tools-superior/$(HOST_PREBUILT_TAG)/bin:$(KERNEL_TOOLCHAIN_arm):$$PATH
+        TOOLS_PATH_OVERRIDE += PATH=$(BUILD_TOP)/prebuilts/tools-lineage/$(HOST_PREBUILT_TAG)/bin:$(KERNEL_TOOLCHAIN_arm):$$PATH
     else
-        TOOLS_PATH_OVERRIDE += PATH=$(BUILD_TOP)/prebuilts/tools-superior/$(HOST_PREBUILT_TAG)/bin:$$PATH
+        TOOLS_PATH_OVERRIDE += PATH=$(BUILD_TOP)/prebuilts/tools-lineage/$(HOST_PREBUILT_TAG)/bin:$$PATH
     endif
 
     # Set the full path to the clang command and LLVM binutils
@@ -184,7 +184,7 @@ else
     KERNEL_MAKE_FLAGS += HOSTCFLAGS="--sysroot=$(BUILD_TOP)/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot -I$(BUILD_TOP)/prebuilts/kernel-build-tools/linux-x86/include"
     KERNEL_MAKE_FLAGS += HOSTLDFLAGS="--sysroot=$(BUILD_TOP)/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot -Wl,-rpath,$(BUILD_TOP)/prebuilts/kernel-build-tools/linux-x86/lib64 -L $(BUILD_TOP)/prebuilts/kernel-build-tools/linux-x86/lib64 -fuse-ld=lld --rtlib=compiler-rt"
 
-    TOOLS_PATH_OVERRIDE += PATH=$(BUILD_TOP)/prebuilts/tools-superior/$(HOST_PREBUILT_TAG)/bin:$(TARGET_KERNEL_CLANG_PATH)/bin:$$PATH
+    TOOLS_PATH_OVERRIDE += PATH=$(BUILD_TOP)/prebuilts/tools-lineage/$(HOST_PREBUILT_TAG)/bin:$(TARGET_KERNEL_CLANG_PATH)/bin:$$PATH
 endif
 
 # Set DTBO image locations so the build system knows to build them
